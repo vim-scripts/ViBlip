@@ -1,0 +1,33 @@
+This is a mirror of http://www.vim.org/scripts/script.php?script_id=2492
+
+Read and write to Blip! (polish microblogging service) with ViBlip!
+After installing, run vim, and type:
+:Blip some blip status
+or:
+:Blip >recipient: some message
+
+to create new status. If you want to read 20 last statuses from your dashboard, just type:
+:DBlip
+If you rather want to read your friend statuses:
+:DBlip friend_name
+You can specify how many statuses from dashboard want to download. From your dashboard:
+:DBlip 5
+From friend's dashboard:
+DBlip friend_name/5
+
+To read private messages:
+:PBlip
+:PBlip 10
+Default PBlip read 5 last Private Messages, second line will download 10 messages.
+
+To read single status:
+:MBlip id
+Where id is single status id. You can also specify what type of status want to read:
+:MBlip id/st
+:MBlip id/dm
+:MBlip id/pm
+
+First line read normal statuses, second - directed messages, and third - private messages.
+
+Sometimes you may have some problems with network connection, and connection to Blip is lost - in this case you can now reconnect:
+:RBlip
