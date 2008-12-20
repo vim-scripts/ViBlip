@@ -1,10 +1,11 @@
 " File: blip.vim
 " Description: Posting statuses to Blip!
 " Maintainer: Marcin Sztolcman <marcin@urzenia.net>
-" Version: v0.1
+" Version: v0.2
 " Date: 2008.12.20
 " History:
-" 0.1 Inital upload to vim.org
+" 0.2 Methods for read private messages or single status, and some fixes
+" 0.1 Initial upload to vim.org
 " ------------------------------------------------------------------------------
 
 if !has('python')
@@ -103,14 +104,100 @@ class ViBlip (object):
                     print 'Cannot parse json.'
                     return
 
-            dboard.reverse ()
             for status in dboard:
                 msg = '%s %s %s' % (status['created_at'], status['id'], status['user_path'].split ('/')[-1])
                 rcp = status.get ('recipient_path', '')
                 if rcp:
                     msg += ' > ' + rcp.split ('/')[-1]
-                msg += ': %s' % viblip_raw2utf (status['body']).replace ('\\', '')
+                msg += ': %s' % self.raw2utf (status['body']).replace ('\\', '')
                 print msg
+
+        except Exception, e:
+            print 'Error:', e
+            return False
+
+    def private (self):
+        url = '/private_messages?limit='
+        if vim.eval ('a:1'):
+        	url += vim.eval ('a:1')
+        else:
+        	url += '5'
+
+        try:
+            self.conn.request ('GET', url, None, self.headers)
+            response = self.conn.getresponse ()
+
+            if response.status not in (200, 201, 204):
+                print 'Error:', response.status, response.reason
+                return
+
+            if response.getheader ('Content-Length', 0) <= 0:
+                print 'No private messages'
+                return
+
+            pms = response.read ()
+            if not pms:
+                print 'No private messages'
+                return
+
+            try:
+                import cjson
+                pms = cjson.decode (pms)
+            except ImportError:
+                try:
+                    pms = eval (pms)
+                except:
+                    print 'Cannot parse json.'
+                    return
+
+            for pm in pms:
+                msg = '%s %s >> %s: %s' % (
+                    pm['created_at'],
+                    pm['user_path'].split ('/')[-1],
+                    pm['recipient_path'].split ('/')[-1],
+                    self.raw2utf (pm['body']).replace ('\\', ''),
+                )
+                print msg
+
+        except Exception, e:
+            print 'Error:', e
+            return False
+
+    def message (self):
+        url = '/statuses/' + vim.eval ('a:1')
+
+        try:
+            self.conn.request ('GET', url, None, self.headers)
+            response = self.conn.getresponse ()
+
+            if response.status not in (200, 201, 204):
+                print 'Error:', response.status, response.reason
+                return
+
+            if response.getheader ('Content-Length', 0) <= 0:
+                print 'Status empty'
+                return
+
+            message = response.read ()
+            if not message:
+                print 'Status empty'
+                return
+
+            try:
+                import cjson
+                message = cjson.decode (message)
+            except ImportError:
+                try:
+                    message = eval (message)
+                except:
+                    print 'Cannot parse json.'
+                    return
+
+            print '%s %s %s' % (
+                message['created_at'],
+                message['user_path'].split ('/')[-1],
+                self.raw2utf (message['body']).replace ('\\', '')
+            )
 
         except Exception, e:
             print 'Error:', e
@@ -129,3 +216,14 @@ function! ViBlipDasboard(...)
     python viblip.dashboard()
 endfunction
 command! -nargs=? DBlip call ViBlipDasboard (<q-args>)
+
+function! ViBlipPrivateMessages(...)
+    python viblip.private()
+endfunction
+command! -nargs=? PBlip call ViBlipPrivateMessages (<q-args>)
+
+function! ViBlipMessage(...)
+    python viblip.message()
+endfunction
+command! -nargs=1 MBlip call ViBlipMessage (<q-args>)
+
